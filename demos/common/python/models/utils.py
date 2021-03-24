@@ -115,6 +115,7 @@ def resize_image_letterbox(image, size):
     return resized_image
 
 
+<<<<<<< HEAD
 def nms(x1, y1, x2, y2, scores, thresh, include_boundaries=False, keep_top_k=None):
     b = 1 if include_boundaries else 0
     areas = (x2 - x1 + b) * (y2 - y1 + b)
@@ -143,3 +144,16 @@ def nms(x1, y1, x2, y2, scores, thresh, include_boundaries=False, keep_top_k=Non
         order = order[np.where(overlap <= thresh)[0] + 1]
 
     return keep
+=======
+def preprocess_output(result):
+    detections, frame_meta = result
+    frame = frame_meta['frame']
+    boxes = []
+    for detection in detections:
+        xmin = max(int(detection.xmin), 0)
+        ymin = max(int(detection.ymin), 0)
+        xmax = min(int(detection.xmax), frame.shape[1])
+        ymax = min(int(detection.ymax), frame.shape[0])
+        boxes.append(frame[ymin:ymax, xmin:xmax])
+    return boxes
+>>>>>>> f61397d97 (Rename prepare(), move one to utils)
