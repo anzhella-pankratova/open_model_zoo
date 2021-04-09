@@ -189,6 +189,10 @@ def main():
     next_frame_id = 1
     next_frame_id_to_show = 0
 
+    total_latency = 0
+    total_fps = 0
+    counter = 0
+
     metrics = PerformanceMetrics()
     video_writer = cv2.VideoWriter()
     presenter = monitors.Presenter(args.utilization_monitors, 55,
@@ -212,6 +216,15 @@ def main():
             next_frame_id_to_show += 1
             if video_writer.isOpened() and (args.output_limit <= 0 or next_frame_id_to_show <= args.output_limit):
                 video_writer.write(frame)
+
+            if counter <= 200:
+                latency, fps = metrics.get_total()
+                if latency and fps:
+                    total_latency += latency
+                    total_fps += fps
+                    counter += 1
+            else:
+                break
 
             if not args.no_show:
                 cv2.imshow('Text Detection Results', frame)
@@ -256,8 +269,11 @@ def main():
                     break
                 presenter.handleKey(key)
 
-    metrics.print_total()
-    print(presenter.reportMeans())
+    print('Mean metrics for 200 frames')
+    print("Total Latency: {:.1f} ms".format(total_latency * 1e3 / 200))
+    print("FPS: {:.1f}".format(total_fps / 200))
+    #metrics.print_total()
+    #print(presenter.reportMeans())
 
 
 if __name__ == '__main__':

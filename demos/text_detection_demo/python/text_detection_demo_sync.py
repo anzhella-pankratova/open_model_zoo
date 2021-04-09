@@ -128,6 +128,10 @@ if __name__ == '__main__':
                                              cap.fps(), (frame.shape[1], frame.shape[0])):
         raise RuntimeError("Can't open video writer")
 
+    total_latency = 0
+    total_fps = 0
+    counter = 0
+
     while frame is not None:
         inputs, meta = text_detection.preprocess(frame)
         outputs = text_detection_exec.infer(inputs=inputs)
@@ -149,7 +153,16 @@ if __name__ == '__main__':
         frame = draw_detections(frame, detections, texts)
         presenter.drawGraphs(frame)
         metrics.update(start_time, frame)
-            
+
+        if counter <= 200:
+            latency, fps = metrics.get_total()
+            if latency and fps:
+                total_latency += latency
+                total_fps += fps
+                counter += 1
+        else:
+            break
+
         frames_processed += 1
         if video_writer.isOpened() and (args.output_limit <= 0 or frames_processed <= args.output_limit):
             video_writer.write(frame)
@@ -164,5 +177,8 @@ if __name__ == '__main__':
         start_time = perf_counter()
         frame = cap.read()
 
-    metrics.print_total()
-    print(presenter.reportMeans())
+    print('Mean metrics for 200 frames')
+    print("Total Latency: {:.1f} ms".format(total_latency * 1e3 / 200))
+    print("FPS: {:.1f}".format(total_fps / 200))
+    #metrics.print_total()
+    #print(presenter.reportMeans())
