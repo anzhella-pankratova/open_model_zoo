@@ -192,6 +192,7 @@ def main():
     total_latency = 0
     total_fps = 0
     counter = 0
+    FRAMES_NUM = 500
 
     metrics = PerformanceMetrics()
     video_writer = cv2.VideoWriter()
@@ -213,7 +214,7 @@ def main():
             frame = draw_detections(frame, detections, texts)
             metrics.update(start_time, frame)
 
-            if counter <= 500:
+            if counter <= FRAMES_NUM:
                 latency, fps = metrics.get_total()
                 if latency and fps:
                     total_latency += latency
@@ -272,9 +273,9 @@ def main():
                     break
                 presenter.handleKey(key)
 
-    print('Mean metrics for 200 frames')
-    print("Total Latency: {:.1f} ms".format(total_latency * 1e3 / 200))
-    print("FPS: {:.1f}".format(total_fps / 200))
+    print('Mean metrics for {} frames'.format(FRAMES_NUM))
+    print("Total Latency: {:.1f} ms".format(total_latency * 1e3 / FRAMES_NUM))
+    print("FPS: {:.1f}".format(total_fps / FRAMES_NUM))
     #metrics.print_total()
     #print(presenter.reportMeans())
 
