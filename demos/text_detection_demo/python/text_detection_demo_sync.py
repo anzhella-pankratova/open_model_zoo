@@ -131,6 +131,7 @@ if __name__ == '__main__':
     total_latency = 0
     total_fps = 0
     counter = 0
+    FRAMES_NUM = 500
 
     while frame is not None:
         inputs, meta = text_detection.preprocess(frame)
@@ -154,7 +155,7 @@ if __name__ == '__main__':
         presenter.drawGraphs(frame)
         metrics.update(start_time, frame)
 
-        if counter <= 500:
+        if counter <= FRAMES_NUM:
             latency, fps = metrics.get_total()
             if latency and fps:
                 total_latency += latency
@@ -177,8 +178,8 @@ if __name__ == '__main__':
         start_time = perf_counter()
         frame = cap.read()
 
-    print('Mean metrics for 200 frames')
-    print("Total Latency: {:.1f} ms".format(total_latency * 1e3 / 200))
-    print("FPS: {:.1f}".format(total_fps / 200))
+    print('Mean metrics for {} frames'.format(FRAMES_NUM))
+    print("Total Latency: {:.1f} ms".format(total_latency * 1e3 / FRAMES_NUM))
+    print("FPS: {:.1f}".format(total_fps / FRAMES_NUM))
     #metrics.print_total()
     #print(presenter.reportMeans())
