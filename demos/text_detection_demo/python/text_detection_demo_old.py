@@ -213,7 +213,7 @@ def main():
             frame = draw_detections(frame, detections, texts)
             metrics.update(start_time, frame)
 
-            if counter <= 200:
+            if counter <= 500:
                 latency, fps = metrics.get_total()
                 if latency and fps:
                     total_latency += latency
