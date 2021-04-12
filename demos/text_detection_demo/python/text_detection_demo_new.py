@@ -217,7 +217,7 @@ def main():
             if video_writer.isOpened() and (args.output_limit <= 0 or next_frame_id_to_show <= args.output_limit):
                 video_writer.write(frame)
 
-            if counter <= 200:
+            if counter <= 500:
                 latency, fps = metrics.get_total()
                 if latency and fps:
                     total_latency += latency

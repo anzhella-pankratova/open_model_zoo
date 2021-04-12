@@ -154,7 +154,7 @@ if __name__ == '__main__':
         presenter.drawGraphs(frame)
         metrics.update(start_time, frame)
 
-        if counter <= 200:
+        if counter <= 500:
             latency, fps = metrics.get_total()
             if latency and fps:
                 total_latency += latency
