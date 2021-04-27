@@ -32,7 +32,7 @@ sys.path.append(str(Path(__file__).resolve().parents[2] / 'common/python'))
 
 import models
 import monitors
-from pipelines import AsyncPipeline
+from pipelines import NewAsyncPipeline
 from images_capture import open_images_capture
 from performance_metrics import PerformanceMetrics
 
@@ -52,8 +52,8 @@ def build_argparser():
     args.add_argument('-i', '--input', required=True,
                       help='Required. An input to process. The input must be a single image, '
                            'a folder of images, video file or camera id.')
-    args.add_argument('-d', '--device', default='CPU', type=str,
-                      help='Optional. Specify the target device to infer on; CPU, GPU, FPGA, HDDL or MYRIAD is '
+    args.add_argument('-d_td', '--device_td', default='CPU', type=str,
+                      help='Optional. Specify the target device to infer on Detection stage; CPU, GPU, FPGA, HDDL or MYRIAD is '
                            'acceptable. The sample will look for a suitable plugin for device specified. '
                            'Default value is CPU.')
 
@@ -69,15 +69,16 @@ def build_argparser():
                                         'otherwise predictions might be incorrect.')
 
     infer_args = parser.add_argument_group('Inference options')
-    infer_args.add_argument('-nireq', '--num_infer_requests', help='Optional. Number of infer requests',
-                            default=1, type=int)
-    infer_args.add_argument('-nstreams', '--num_streams',
+    infer_args.add_argument('-nireq_td', '--num_requests_td', default=1, type=int,
+                            help='Optional. Number of infer requests for Detection stage.')
+    infer_args.add_argument('-nstreams_td', '--num_streams_td',
                             help='Optional. Number of streams to use for inference on the CPU or/and GPU in throughput '
                                  'mode (for HETERO and MULTI device cases use format '
-                                 '<device1>:<nstreams1>,<device2>:<nstreams2> or just <nstreams>).',
+                                 '<device1>:<nstreams1>,<device2>:<nstreams2> or just <nstreams>) for Detection stage.',
                             default='', type=str)
-    infer_args.add_argument('-nthreads', '--num_threads', default=None, type=int,
-                            help='Optional. Number of threads to use for inference on CPU (including HETERO cases).')
+    infer_args.add_argument('-nthreads_td', '--num_threads_td', default=None, type=int,
+                            help='Optional. Number of threads to use for inference on CPU (including HETERO cases) '
+                                 'for Detection stage.')
 
     io_args = parser.add_argument_group('Input/output options')
     io_args.add_argument('--loop', default=False, action='store_true',
@@ -227,14 +228,13 @@ def main():
     log.info('Initializing Inference Engine...')
     ie = IECore()
 
-    plugin_config = get_plugin_configs(args.device, args.num_streams, args.num_threads)
+    plugin_config_td = get_plugin_configs(args.device_td, args.num_streams_td, args.num_threads_td)
 
     log.info('Loading network...')
 
     model = get_model(ie, args)
 
-    detector_pipeline = AsyncPipeline(ie, model, plugin_config,
-                                      device=args.device, max_num_requests=args.num_infer_requests)
+    pipeline = NewAsyncPipeline(ie, model, plugin_config_td, args.device_td, args.num_requests_td)
 
     cap = open_images_capture(args.input, args.loop)
 
@@ -254,21 +254,22 @@ def main():
     video_writer = cv2.VideoWriter()
 
     while True:
-        if detector_pipeline.callback_exceptions:
-            raise detector_pipeline.callback_exceptions[0]
         # Process all completed requests
-        results = detector_pipeline.get_result(next_frame_id_to_show)
+        results = pipeline.get_result(next_frame_id_to_show)
         if results:
             objects, frame_meta = results
             frame = frame_meta['frame']
             start_time = frame_meta['start_time']
 
-            if len(objects) and args.raw_output_message:
-                print_raw_results(frame.shape[:2], objects, model.labels, args.prob_threshold)
+            #if len(objects) and args.raw_output_message:
+            #    print_raw_results(frame.shape[:2], objects, model.labels, args.prob_threshold)
 
             presenter.drawGraphs(frame)
             frame = draw_detections(frame, objects, palette, model.labels, args.prob_threshold)
             metrics.update(start_time, frame)
+
+            if video_writer.isOpened() and (args.output_limit <= 0 or next_frame_id_to_show <= args.output_limit-1):
+                video_writer.write(frame)
 
             next_frame_id_to_show += 1
             if counter <= FRAMES_NUM:
@@ -291,7 +292,7 @@ def main():
                 presenter.handleKey(key)
             continue
 
-        if detector_pipeline.is_ready():
+        if pipeline.is_ready() and next_frame_id - next_frame_id_to_show <= int(args.num_streams_td):
             # Get new image/frame
             start_time = perf_counter()
             frame = cap.read()
@@ -306,17 +307,17 @@ def main():
                                                          cap.fps(), (frame.shape[1], frame.shape[0])):
                     raise RuntimeError("Can't open video writer")
             # Submit for inference
-            detector_pipeline.submit_data(frame, next_frame_id, {'frame': frame, 'start_time': start_time})
+            pipeline.submit_data(frame, next_frame_id, {'frame': frame, 'start_time': start_time})
             next_frame_id += 1
 
         else:
             # Wait for empty request
-            detector_pipeline.await_any()
+            pipeline.await_any()
 
-    detector_pipeline.await_all()
+    pipeline.await_all()
     # Process completed requests
-    while detector_pipeline.has_completed_request():
-        results = detector_pipeline.get_result(next_frame_id_to_show)
+    while pipeline.has_completed_request():
+        results = pipeline.get_result(next_frame_id_to_show)
         if results:
             objects, frame_meta = results
             frame = frame_meta['frame']
