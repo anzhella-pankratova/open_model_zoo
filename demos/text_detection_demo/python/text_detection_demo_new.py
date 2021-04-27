@@ -192,7 +192,7 @@ def main():
     total_latency = 0
     total_fps = 0
     counter = 0
-    FRAMES_NUM = 500
+    FRAMES_NUM = 50
 
     metrics = PerformanceMetrics()
     video_writer = cv2.VideoWriter()
@@ -214,18 +214,18 @@ def main():
             frame = draw_detections(frame, detections, texts)
             metrics.update(start_time, frame)
 
-            next_frame_id_to_show += 1
-            if video_writer.isOpened() and (args.output_limit <= 0 or next_frame_id_to_show <= args.output_limit):
-                video_writer.write(frame)
-
             if counter <= FRAMES_NUM:
                 latency, fps = metrics.get_total()
-                if latency and fps:
+                if latency and fps and next_frame_id_to_show != 1:
                     total_latency += latency
                     total_fps += fps
                     counter += 1
             else:
                 break
+
+            next_frame_id_to_show += 1
+            if video_writer.isOpened() and (args.output_limit <= 0 or next_frame_id_to_show <= args.output_limit):
+                video_writer.write(frame)
 
             if not args.no_show:
                 cv2.imshow('Text Detection Results', frame)
@@ -235,7 +235,7 @@ def main():
                 presenter.handleKey(key)
             continue
 
-        if pipeline.is_ready() and next_frame_id_to_show - next_frame_id <= 1:
+        if pipeline.is_ready() and next_frame_id - next_frame_id_to_show < int(args.num_streams_td):
             # Get new frame
             start_time = perf_counter()
             frame = cap.read()
@@ -244,6 +244,8 @@ def main():
             # Submit to text detection model
             pipeline.submit_data(frame, next_frame_id, {'frame': frame, 'start_time': start_time})
             next_frame_id += 1
+        else:
+            pipeline.await_any()
 
     pipeline.await_all()
 

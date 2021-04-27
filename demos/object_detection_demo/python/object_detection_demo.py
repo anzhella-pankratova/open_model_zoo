@@ -270,15 +270,15 @@ def main():
             frame = draw_detections(frame, objects, palette, model.labels, args.prob_threshold)
             metrics.update(start_time, frame)
 
-            next_frame_id_to_show += 1
             if counter <= FRAMES_NUM:
                 latency, fps = metrics.get_total()
-                if latency and fps:
+                if latency and fps and next_frame_id_to_show != 1:
                     total_latency += latency
                     total_fps += fps
                     counter += 1
             else:
                 break
+            next_frame_id_to_show += 1
             
             if not args.no_show:
                 cv2.imshow('Detection Results', frame)

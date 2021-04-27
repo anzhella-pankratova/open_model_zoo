@@ -192,7 +192,7 @@ def main():
     total_latency = 0
     total_fps = 0
     counter = 0
-    FRAMES_NUM = 500
+    FRAMES_NUM = 50
 
     metrics = PerformanceMetrics()
     video_writer = cv2.VideoWriter()
@@ -216,7 +216,7 @@ def main():
 
             if counter <= FRAMES_NUM:
                 latency, fps = metrics.get_total()
-                if latency and fps:
+                if latency and fps and next_frame_id_to_show != 1:
                     total_latency += latency
                     total_fps += fps
                     counter += 1
@@ -235,7 +235,7 @@ def main():
                 presenter.handleKey(key)
             continue
 
-        if pipeline.is_ready() and next_frame_id_to_show - next_frame_id <= 1:
+        if pipeline.is_ready() and next_frame_id - next_frame_id_to_show < int(args.num_streams_td):
             # Get new frame
             start_time = perf_counter()
             frame = cap.read()

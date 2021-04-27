@@ -82,6 +82,12 @@ class newTwoStagePipeline:
         return self.detector_boxes[id][1] \
                == len([x for x in self.recognizer_result[id] if x is not None])
 
+    def await_any(self):
+        if self.processed_recognizer_req_id:
+            self.exec_net_recognizer.wait(num_requests=min(len(self.empty_recognizer_req_id) + 1, len(self.exec_net_recognizer.requests)))
+        elif self.processed_detector_req_id:
+            self.exec_net_detector.wait(num_requests=min(len(self.empty_detector_req_id) + 1, len(self.exec_net_detector.requests)), timeout=1)
+
     def check_recognizer_status(self):
         i = 0
         while i < len(self.processed_recognizer_req_id):
