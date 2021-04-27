@@ -271,20 +271,24 @@ def main():
             metrics.update(start_time, frame)
 
 <<<<<<< HEAD
+<<<<<<< HEAD
             if video_writer.isOpened() and (args.output_limit <= 0 or next_frame_id_to_show <= args.output_limit-1):
                 video_writer.write(frame)
             next_frame_id_to_show += 1
 
 =======
             next_frame_id_to_show += 1
+=======
+>>>>>>> 540d5cbdd (Update)
             if counter <= FRAMES_NUM:
                 latency, fps = metrics.get_total()
-                if latency and fps:
+                if latency and fps and next_frame_id_to_show != 1:
                     total_latency += latency
                     total_fps += fps
                     counter += 1
             else:
                 break
+            next_frame_id_to_show += 1
             
 >>>>>>> 4611a84af (Add AsyncPipeline with waits to compare)
             if not args.no_show:

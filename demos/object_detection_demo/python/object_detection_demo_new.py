@@ -52,7 +52,7 @@ def build_argparser():
     args.add_argument('-i', '--input', required=True,
                       help='Required. An input to process. The input must be a single image, '
                            'a folder of images, video file or camera id.')
-    args.add_argument('-d_td', '--device_td', default='CPU', type=str,
+    args.add_argument('-d', '--device', default='CPU', type=str,
                       help='Optional. Specify the target device to infer on Detection stage; CPU, GPU, FPGA, HDDL or MYRIAD is '
                            'acceptable. The sample will look for a suitable plugin for device specified. '
                            'Default value is CPU.')
@@ -69,14 +69,14 @@ def build_argparser():
                                         'otherwise predictions might be incorrect.')
 
     infer_args = parser.add_argument_group('Inference options')
-    infer_args.add_argument('-nireq_td', '--num_requests_td', default=1, type=int,
+    infer_args.add_argument('-nireq', '--num_requests', default=1, type=int,
                             help='Optional. Number of infer requests for Detection stage.')
-    infer_args.add_argument('-nstreams_td', '--num_streams_td',
+    infer_args.add_argument('-nstreams', '--num_streams',
                             help='Optional. Number of streams to use for inference on the CPU or/and GPU in throughput '
                                  'mode (for HETERO and MULTI device cases use format '
                                  '<device1>:<nstreams1>,<device2>:<nstreams2> or just <nstreams>) for Detection stage.',
                             default='', type=str)
-    infer_args.add_argument('-nthreads_td', '--num_threads_td', default=None, type=int,
+    infer_args.add_argument('-nthreads', '--num_threads', default=None, type=int,
                             help='Optional. Number of threads to use for inference on CPU (including HETERO cases) '
                                  'for Detection stage.')
 
@@ -228,13 +228,13 @@ def main():
     log.info('Initializing Inference Engine...')
     ie = IECore()
 
-    plugin_config_td = get_plugin_configs(args.device_td, args.num_streams_td, args.num_threads_td)
+    plugin_config = get_plugin_configs(args.device, args.num_streams, args.num_threads)
 
     log.info('Loading network...')
 
     model = get_model(ie, args)
 
-    pipeline = NewAsyncPipeline(ie, model, plugin_config_td, args.device_td, args.num_requests_td)
+    pipeline = NewAsyncPipeline(ie, model, plugin_config, args.device, args.num_requests)
 
     cap = open_images_capture(args.input, args.loop)
 
@@ -268,18 +268,19 @@ def main():
             frame = draw_detections(frame, objects, palette, model.labels, args.prob_threshold)
             metrics.update(start_time, frame)
 
-            if video_writer.isOpened() and (args.output_limit <= 0 or next_frame_id_to_show <= args.output_limit-1):
-                video_writer.write(frame)
-
-            next_frame_id_to_show += 1
             if counter <= FRAMES_NUM:
                 latency, fps = metrics.get_total()
-                if latency and fps:
+                if latency and fps and next_frame_id_to_show != 1:
                     total_latency += latency
                     total_fps += fps
                     counter += 1
             else:
                 break
+
+            if video_writer.isOpened() and (args.output_limit <= 0 or next_frame_id_to_show <= args.output_limit-1):
+                video_writer.write(frame)
+
+            next_frame_id_to_show += 1
             
             if not args.no_show:
                 cv2.imshow('Detection Results', frame)
@@ -292,7 +293,7 @@ def main():
                 presenter.handleKey(key)
             continue
 
-        if pipeline.is_ready() and next_frame_id - next_frame_id_to_show <= int(args.num_streams_td):
+        if pipeline.is_ready() and next_frame_id - next_frame_id_to_show < int(args.num_streams):
             # Get new image/frame
             start_time = perf_counter()
             frame = cap.read()

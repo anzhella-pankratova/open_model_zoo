@@ -157,7 +157,7 @@ if __name__ == '__main__':
 
         if counter <= FRAMES_NUM:
             latency, fps = metrics.get_total()
-            if latency and fps:
+            if latency and fps and frames_processed != 1:
                 total_latency += latency
                 total_fps += fps
                 counter += 1
