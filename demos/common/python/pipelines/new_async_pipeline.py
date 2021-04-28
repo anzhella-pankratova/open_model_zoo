@@ -22,50 +22,42 @@ class NewAsyncPipeline:
 
 
     def get_result(self, id):
-        #self.check_detector_status()
         self.check_detector_status()
 
         if id in self.detector_result:
             return self.detector_result.pop(id)
-        self.check_detector_status()
+        #self.check_detector_status1()
         return None
 
 
     def await_any(self):
         if self.processed_detector_req_id:
-            #print('wait detector')
             self.exec_net_detector.wait(num_requests=min(len(self.empty_detector_req_id) + 1, len(self.exec_net_detector.requests)), timeout=1)
 
 
-    def check_detector_status1(self):
-        #for _ in range(2):
+    def check_detector_status(self): # works slower on fast models
         i = 0
         while i < len(self.processed_detector_req_id):
             req_id = self.processed_detector_req_id[i]
             if self.exec_net_detector.requests[req_id].wait(3) == 0:
                 result, id = self.get_detector_result(req_id)
-                    #boxes = preprocess_output(result)
                 self.detector_result[id] = result
                 del self.processed_detector_req_id[i]
                 self.empty_detector_req_id.append(req_id)
             else:
                 i += 1
 
-    def check_detector_status(self): # not work
+    def check_detector_status1(self): # works better on fast models
         processed = len(self.processed_detector_req_id)
         for _ in range(processed):
             req_id = self.exec_net_detector.get_idle_request_id()
             if req_id == -1:
-                #print('req_id == -1')
                 self.await_any()
                 req_id = self.exec_net_detector.get_idle_request_id()
-            #print(req_id)
             if req_id in self.processed_detector_req_id:
                 result, id = self.get_detector_result(req_id)
                 self.detector_result[id] = result
-                #print('before', self.processed_detector_req_id)
                 self.processed_detector_req_id.remove(req_id)
-                #print('after', self.processed_detector_req_id)
                 self.empty_detector_req_id.append(req_id)
 
     def get_detector_result(self, request_id):
@@ -74,12 +66,10 @@ class NewAsyncPipeline:
         raw_result = {key: blob.buffer for key, blob in request.output_blobs.items()}
         return (self.detector.postprocess(raw_result, preprocess_meta), meta), frame_id
 
-
     def get_detector_meta(self, request_id):
         meta = self.detector_meta[request_id]
         self.detector_meta[request_id] = None
         return meta
-
 
     def submit_data(self, inputs, id, meta):
         request_id = self.empty_detector_req_id.popleft()
@@ -100,4 +90,4 @@ class NewAsyncPipeline:
             request.wait()
 
     def has_completed_request(self):
-        return len(self.processed_detector_req_id) > 0 
+        return len(self.processed_detector_req_id) > 0

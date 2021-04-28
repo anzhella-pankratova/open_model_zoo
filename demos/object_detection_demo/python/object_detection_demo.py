@@ -243,7 +243,7 @@ def main():
     total_latency = 0
     total_fps = 0
     counter = 0
-    FRAMES_NUM = 100
+    FRAMES_NUM = 20
 
     log.info('Starting inference...')
     print("To close the application, press 'CTRL+C' here or switch to the output window and press ESC key")
