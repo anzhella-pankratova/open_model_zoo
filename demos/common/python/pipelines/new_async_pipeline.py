@@ -12,6 +12,7 @@ class NewAsyncPipeline:
         self.exec_net_detector = ie.load_network(network=self.detector.net, device_name=td_device,
                                                  config=td_plugin_config, num_requests=td_num_requests)
 
+        self.td_num_requests = td_num_requests
         detector_req_id = [id for id in range(td_num_requests)]
 
         self.empty_detector_req_id = deque(detector_req_id)
@@ -21,11 +22,12 @@ class NewAsyncPipeline:
 
 
     def get_result(self, id):
+        #self.check_detector_status()
         self.check_detector_status()
 
         if id in self.detector_result:
             return self.detector_result.pop(id)
-
+        self.check_detector_status()
         return None
 
 
@@ -35,7 +37,7 @@ class NewAsyncPipeline:
             self.exec_net_detector.wait(num_requests=min(len(self.empty_detector_req_id) + 1, len(self.exec_net_detector.requests)), timeout=1)
 
 
-    def check_detector_status(self):
+    def check_detector_status1(self):
         #for _ in range(2):
         i = 0
         while i < len(self.processed_detector_req_id):
@@ -48,6 +50,23 @@ class NewAsyncPipeline:
                 self.empty_detector_req_id.append(req_id)
             else:
                 i += 1
+
+    def check_detector_status(self): # not work
+        processed = len(self.processed_detector_req_id)
+        for _ in range(processed):
+            req_id = self.exec_net_detector.get_idle_request_id()
+            if req_id == -1:
+                #print('req_id == -1')
+                self.await_any()
+                req_id = self.exec_net_detector.get_idle_request_id()
+            #print(req_id)
+            if req_id in self.processed_detector_req_id:
+                result, id = self.get_detector_result(req_id)
+                self.detector_result[id] = result
+                #print('before', self.processed_detector_req_id)
+                self.processed_detector_req_id.remove(req_id)
+                #print('after', self.processed_detector_req_id)
+                self.empty_detector_req_id.append(req_id)
 
     def get_detector_result(self, request_id):
         request = self.exec_net_detector.requests[request_id]
