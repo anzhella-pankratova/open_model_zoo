@@ -216,7 +216,7 @@ def main():
 
             if counter <= FRAMES_NUM:
                 latency, fps = metrics.get_total()
-                if latency and fps and next_frame_id_to_show != 1:
+                if latency and fps:# and next_frame_id_to_show < 10:
                     total_latency += latency
                     total_fps += fps
                     counter += 1

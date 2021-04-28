@@ -271,6 +271,7 @@ def main():
             if counter <= FRAMES_NUM:
                 latency, fps = metrics.get_total()
                 if latency and fps and next_frame_id_to_show != 1:
+                    #print(next_frame_id_to_show, fps)
                     total_latency += latency
                     total_fps += fps
                     counter += 1
@@ -311,9 +312,9 @@ def main():
             pipeline.submit_data(frame, next_frame_id, {'frame': frame, 'start_time': start_time})
             next_frame_id += 1
 
-        else:
+        #else:
             # Wait for empty request
-            pipeline.await_any()
+        #    pipeline.await_any()
 
     pipeline.await_all()
     # Process completed requests
