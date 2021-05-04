@@ -32,7 +32,7 @@ sys.path.append(str(Path(__file__).resolve().parents[2] / 'common/python'))
 
 import models
 import monitors
-from pipelines import NewAsyncPipeline
+from pipelines import NewAsyncPipeline1
 from images_capture import open_images_capture
 from performance_metrics import PerformanceMetrics
 
@@ -234,7 +234,7 @@ def main():
 
     model = get_model(ie, args)
 
-    pipeline = NewAsyncPipeline(ie, model, plugin_config, args.device, args.num_requests)
+    pipeline = NewAsyncPipeline1(ie, model, plugin_config, args.device, args.num_requests)
 
     cap = open_images_capture(args.input, args.loop)
 
@@ -271,8 +271,7 @@ def main():
 
             if counter <= FRAMES_NUM:
                 latency, fps = metrics.get_total()
-                if latency and fps and next_frame_id_to_show != 1:
-                    #print(next_frame_id_to_show, fps)
+                if latency and fps and next_frame_id_to_show >= 10:
                     total_latency += latency
                     total_fps += fps
                     counter += 1
@@ -312,10 +311,9 @@ def main():
             # Submit for inference
             pipeline.submit_data(frame, next_frame_id, {'frame': frame, 'start_time': start_time})
             next_frame_id += 1
-
-        #else:
+        else:
             # Wait for empty request
-        #    pipeline.await_any()
+            pipeline.await_any()
 
     pipeline.await_all()
     # Process completed requests
