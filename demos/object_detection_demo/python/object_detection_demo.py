@@ -242,7 +242,7 @@ def main():
     total_latency = 0
     total_fps = 0
     counter = 0
-    FRAMES_NUM = 20
+    FRAMES_NUM = 50
 
     log.info('Starting inference...')
     print("To close the application, press 'CTRL+C' here or switch to the output window and press ESC key")
@@ -282,7 +282,7 @@ def main():
 >>>>>>> 540d5cbdd (Update)
             if counter <= FRAMES_NUM:
                 latency, fps = metrics.get_total()
-                if latency and fps and next_frame_id_to_show != 1:
+                if latency and fps and next_frame_id_to_show >= 10:
                     total_latency += latency
                     total_fps += fps
                     counter += 1
