@@ -235,14 +235,10 @@ def main():
     detector_pipeline = AsyncPipeline(ie, model, plugin_config,
                                       device=args.device, max_num_requests=args.num_infer_requests)
 
-    cap = open_images_capture(args.input, args.loop)
-
-    next_frame_id = 0
-    next_frame_id_to_show = 0
-    total_latency = 0
-    total_fps = 0
-    counter = 0
-    FRAMES_NUM = 100
+    FRAMES_NUM = 50
+    TIMES_TO_REPEAT = 5
+    mean_latency = []
+    mean_fps = []
 
     log.info('Starting inference...')
     print("To close the application, press 'CTRL+C' here or switch to the output window and press ESC key")
@@ -253,12 +249,90 @@ def main():
     output_transform = None
     video_writer = cv2.VideoWriter()
 
-    while True:
-        if detector_pipeline.callback_exceptions:
-            raise detector_pipeline.callback_exceptions[0]
-        # Process all completed requests
-        results = detector_pipeline.get_result(next_frame_id_to_show)
-        if results:
+    for i in range(TIMES_TO_REPEAT):
+        cap = open_images_capture(args.input, args.loop)
+        next_frame_id = 0
+        next_frame_id_to_show = 0
+        total_latency = 0
+        total_fps = 0
+        counter = 0
+        while True:
+            if detector_pipeline.callback_exceptions:
+                raise detector_pipeline.callback_exceptions[0]
+            # Process all completed requests
+            results = detector_pipeline.get_result(next_frame_id_to_show)
+            if results:
+                objects, frame_meta = results
+                frame = frame_meta['frame']
+                start_time = frame_meta['start_time']
+
+                if len(objects) and args.raw_output_message:
+                    print_raw_results(frame.shape[:2], objects, model.labels, args.prob_threshold)
+
+                presenter.drawGraphs(frame)
+                frame = draw_detections(frame, objects, palette, model.labels, args.prob_threshold, output_transform)
+                metrics.update(start_time, frame)
+
+                next_frame_id_to_show += 1
+
+                if counter <= FRAMES_NUM:
+                    latency, fps = metrics.get_total()
+                    if latency and fps and next_frame_id_to_show >= 10:
+                        total_latency += latency
+                        total_fps += fps
+                        counter += 1
+                else:
+                    mean_latency.append(total_latency * 1e3 / FRAMES_NUM)
+                    mean_fps.append(total_fps / FRAMES_NUM)
+                    break
+
+                if video_writer.isOpened() and (args.output_limit <= 0 or next_frame_id_to_show <= args.output_limit):
+                    video_writer.write(frame)
+
+                if not args.no_show:
+                    cv2.imshow('Detection Results', frame)
+                    key = cv2.waitKey(1)
+
+                    ESC_KEY = 27
+                    # Quit.
+                    if key in {ord('q'), ord('Q'), ESC_KEY}:
+                        break
+                    presenter.handleKey(key)
+                continue
+
+            if detector_pipeline.is_ready():
+                # Get new image/frame
+                start_time = perf_counter()
+                frame = cap.read()
+                if frame is None:
+                    if next_frame_id == 0:
+                        raise ValueError("Can't read an image from the input")
+                    break
+                if next_frame_id == 0:
+                    output_transform = models.OutputTransform(frame.shape[:2], args.output_resolution)
+                    if args.output_resolution:
+                        output_resolution = output_transform.new_resolution
+                    else:
+                        output_resolution = (frame.shape[1], frame.shape[0])
+                    presenter = monitors.Presenter(args.utilization_monitors, 55,
+                                                (round(output_resolution[0] / 4), round(output_resolution[1] / 8)))
+                    if args.output and not video_writer.open(args.output, cv2.VideoWriter_fourcc(*'MJPG'),
+                                                            cap.fps(), output_resolution):
+                        raise RuntimeError("Can't open video writer")
+                # Submit for inference
+                detector_pipeline.submit_data(frame, next_frame_id, {'frame': frame, 'start_time': start_time})
+                next_frame_id += 1
+
+            else:
+                # Wait for empty request
+                detector_pipeline.await_any()
+
+        detector_pipeline.await_all()
+        # Process completed requests
+        for next_frame_id_to_show in range(next_frame_id_to_show, next_frame_id):
+            results = detector_pipeline.get_result(next_frame_id_to_show)
+            while results is None:
+                results = detector_pipeline.get_result(next_frame_id_to_show)
             objects, frame_meta = results
             frame = frame_meta['frame']
             start_time = frame_meta['start_time']
@@ -270,18 +344,7 @@ def main():
             frame = draw_detections(frame, objects, palette, model.labels, args.prob_threshold, output_transform)
             metrics.update(start_time, frame)
 
-            next_frame_id_to_show += 1
-
-            if counter <= FRAMES_NUM:
-                latency, fps = metrics.get_total()
-                if latency and fps and next_frame_id_to_show >= 10:
-                    total_latency += latency
-                    total_fps += fps
-                    counter += 1
-            else:
-                break
-
-            if video_writer.isOpened() and (args.output_limit <= 0 or next_frame_id_to_show <= args.output_limit):
+            if video_writer.isOpened() and (args.output_limit <= 0 or next_frame_id_to_show <= args.output_limit-1):
                 video_writer.write(frame)
 
             if not args.no_show:
@@ -293,70 +356,16 @@ def main():
                 if key in {ord('q'), ord('Q'), ESC_KEY}:
                     break
                 presenter.handleKey(key)
-            continue
 
-        if detector_pipeline.is_ready():
-            # Get new image/frame
-            start_time = perf_counter()
-            frame = cap.read()
-            if frame is None:
-                if next_frame_id == 0:
-                    raise ValueError("Can't read an image from the input")
-                break
-            if next_frame_id == 0:
-                output_transform = models.OutputTransform(frame.shape[:2], args.output_resolution)
-                if args.output_resolution:
-                    output_resolution = output_transform.new_resolution
-                else:
-                    output_resolution = (frame.shape[1], frame.shape[0])
-                presenter = monitors.Presenter(args.utilization_monitors, 55,
-                                               (round(output_resolution[0] / 4), round(output_resolution[1] / 8)))
-                if args.output and not video_writer.open(args.output, cv2.VideoWriter_fourcc(*'MJPG'),
-                                                         cap.fps(), output_resolution):
-                    raise RuntimeError("Can't open video writer")
-            # Submit for inference
-            detector_pipeline.submit_data(frame, next_frame_id, {'frame': frame, 'start_time': start_time})
-            next_frame_id += 1
-
-        else:
-            # Wait for empty request
-            detector_pipeline.await_any()
-
-    detector_pipeline.await_all()
-    # Process completed requests
-    for next_frame_id_to_show in range(next_frame_id_to_show, next_frame_id):
-        results = detector_pipeline.get_result(next_frame_id_to_show)
-        while results is None:
-            results = detector_pipeline.get_result(next_frame_id_to_show)
-        objects, frame_meta = results
-        frame = frame_meta['frame']
-        start_time = frame_meta['start_time']
-
-        if len(objects) and args.raw_output_message:
-            print_raw_results(frame.shape[:2], objects, model.labels, args.prob_threshold)
-
-        presenter.drawGraphs(frame)
-        frame = draw_detections(frame, objects, palette, model.labels, args.prob_threshold, output_transform)
-        metrics.update(start_time, frame)
-
-        if video_writer.isOpened() and (args.output_limit <= 0 or next_frame_id_to_show <= args.output_limit-1):
-            video_writer.write(frame)
-
-        if not args.no_show:
-            cv2.imshow('Detection Results', frame)
-            key = cv2.waitKey(1)
-
-            ESC_KEY = 27
-            # Quit.
-            if key in {ord('q'), ord('Q'), ESC_KEY}:
-                break
-            presenter.handleKey(key)
-
-    print('Mean metrics for {} frames'.format(FRAMES_NUM))
-    print("Total Latency: {:.1f} ms".format(total_latency * 1e3 / FRAMES_NUM))
-    print("FPS: {:.1f}".format(total_fps / FRAMES_NUM))
-    #metrics.print_total()
-    #print(presenter.reportMeans())
+    latency = np.array(mean_latency)
+    mean_latency, std_latency = latency.mean().round(2), latency.std().round(2)
+    latency_range = str(mean_latency - std_latency) + '-' + str(mean_latency + std_latency)
+    fps = np.array(mean_fps)
+    mean_fps, std_fps = fps.mean().round(2), fps.std().round(2)
+    fps_range = str(mean_fps - std_fps) + '-' + str(mean_fps + std_fps)
+    print('Mean metrics and std for {} frames, {} launch times'.format(FRAMES_NUM, TIMES_TO_REPEAT))
+    print("Latency: {} ms".format(latency_range))
+    print("FPS: {}".format(fps_range))
 
 
 if __name__ == '__main__':

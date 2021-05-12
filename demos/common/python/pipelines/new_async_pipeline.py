@@ -2,36 +2,36 @@ import logging
 from collections import deque
 
 
-class NewAsyncPipeline2:
-    def __init__(self, ie, detector, td_plugin_config, td_device, td_num_requests):
+class NewAsyncPipeline:
+    def __init__(self, ie, detector, plugin_config, device, max_num_requests):
         self.logger = logging.getLogger()
         self.detector = detector
 
-        self.logger.info('Loading Text Detection network to {} plugin...'.format(td_device))
-        self.exec_net_detector = ie.load_network(network=self.detector.net, device_name=td_device,
-                                                 config=td_plugin_config, num_requests=td_num_requests)
-
-        self.td_num_requests = td_num_requests
-        detector_req_id = [id for id in range(td_num_requests)]
-
+        self.logger.info('Loading Text Detection network to {} plugin...'.format(device))
+        self.exec_net_detector = ie.load_network(network=self.detector.net, device_name=device,
+                                                 config=plugin_config, num_requests=max_num_requests)
+        self.num_requests = len(self.exec_net_detector.requests)
+        if max_num_requests == 0:
+            # ExecutableNetwork doesn't allow creation of additional InferRequests. Reload ExecutableNetwork
+            # +1 to use it as a buffer of the pipeline
+            self.num_requests += 1
+            self.exec_net_detector = ie.load_network(network=self.detector.net, device_name=device,
+                                                     config=plugin_config, num_requests=self.num_requests)
+        detector_req_id = [id for id in range(self.num_requests)]
         self.empty_detector_req_id = deque(detector_req_id)
         self.processed_detector_req_id = deque([])
-        self.detector_meta = {req_id : None for req_id in detector_req_id}     # [frame_id, preprocess_meta, meta]
+        self.detector_meta = {req_id : None for req_id in detector_req_id}  # [frame_id, preprocess_meta, meta]
         self.detector_result = {} # {frame_id: result}, it returns to the user
-
 
     def get_result(self, id):
         self.check_detector_status()
-
         if id in self.detector_result:
             return self.detector_result.pop(id)
-
         return None
-
 
     def await_any(self):
         if self.processed_detector_req_id:
-            self.exec_net_detector.wait(num_requests=min(len(self.empty_detector_req_id) + 1, len(self.exec_net_detector.requests)), timeout=1)
+            self.exec_net_detector.wait(num_requests=min(len(self.empty_detector_req_id) + 1, self.num_requests), timeout=1)
 
     def check_detector_status(self):
         req_id = self.exec_net_detector.get_idle_request_id()
