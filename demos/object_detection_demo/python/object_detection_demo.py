@@ -270,6 +270,8 @@ def main():
             frame = draw_detections(frame, objects, palette, model.labels, args.prob_threshold, output_transform)
             metrics.update(start_time, frame)
 
+            next_frame_id_to_show += 1
+
             if counter <= FRAMES_NUM:
                 latency, fps = metrics.get_total()
                 if latency and fps and next_frame_id_to_show >= 10:
@@ -279,10 +281,8 @@ def main():
             else:
                 break
 
-            if video_writer.isOpened() and (args.output_limit <= 0 or next_frame_id_to_show <= args.output_limit-1):
+            if video_writer.isOpened() and (args.output_limit <= 0 or next_frame_id_to_show <= args.output_limit):
                 video_writer.write(frame)
-
-            next_frame_id_to_show += 1
 
             if not args.no_show:
                 cv2.imshow('Detection Results', frame)
