@@ -29,7 +29,7 @@ sys.path.append(str(Path(__file__).resolve().parents[2] / 'common/python'))
 
 from models import OutputTransform, SegmentationModel, SalientObjectDetectionModel
 import monitors
-from pipelines import get_user_config, AsyncPipeline
+from pipelines import get_user_config, NewAsyncPipeline
 from images_capture import open_images_capture
 from performance_metrics import PerformanceMetrics
 from helpers import resolution
@@ -170,7 +170,7 @@ def main():
 
     model, visualizer = get_model(ie, args)
 
-    pipeline = AsyncPipeline(ie, model, plugin_config, device=args.device, max_num_requests=args.num_infer_requests)
+    pipeline = NewAsyncPipeline(ie, model, plugin_config, device=args.device, max_num_requests=args.num_infer_requests)
 
     FRAMES_NUM = 100
     TIMES_TO_REPEAT = 5
@@ -192,6 +192,45 @@ def main():
         total_fps = 0
         counter = 0
         while True:
+            # Process all completed requests
+            results = pipeline.get_result(next_frame_id_to_show)
+            if results:
+                objects, frame_meta = results
+                frame = frame_meta['frame']
+                start_time = frame_meta['start_time']
+
+                presenter.drawGraphs(frame)
+                frame = visualizer.overlay_masks(frame, objects, output_transform)
+                metrics.update(start_time, frame)
+
+                next_frame_id_to_show += 1
+
+                if counter <= FRAMES_NUM:
+                    latency, fps = metrics.get_total()
+                    if latency and fps and next_frame_id_to_show >= 10:
+                        total_latency += latency
+                        total_fps += fps
+                        counter += 1
+                else:
+                    mean_latency.append(total_latency * 1e3 / FRAMES_NUM)
+                    mean_fps.append(total_fps / FRAMES_NUM)
+                    break
+
+                if video_writer.isOpened() and (args.output_limit <= 0 or next_frame_id_to_show <= args.output_limit):
+                    video_writer.write(frame)
+                
+
+                if not args.no_show:
+                    cv2.imshow('Segmentation Results', frame)
+                    key = cv2.waitKey(1)
+
+                    ESC_KEY = 27
+                    # Quit.
+                    if key in {ord('q'), ord('Q'), ESC_KEY}:
+                        break
+                    presenter.handleKey(key)
+                continue
+
             if pipeline.is_ready():
                 # Get new image/frame
                 start_time = perf_counter()
@@ -218,60 +257,37 @@ def main():
                 # Wait for empty request
                 pipeline.await_any()
 
-            if pipeline.callback_exceptions:
-                raise pipeline.callback_exceptions[0]
-            # Process all completed requests
+        pipeline.await_all()
+        # Process completed requests
+        while pipeline.has_completed_request():
             results = pipeline.get_result(next_frame_id_to_show)
             if results:
                 objects, frame_meta = results
                 frame = frame_meta['frame']
                 start_time = frame_meta['start_time']
-                frame = visualizer.overlay_masks(frame, objects, output_transform)
+
+                #if len(objects) and args.raw_output_message:
+                #    print_raw_results(frame.shape[:2], objects, model.labels, args.prob_threshold)
+
                 presenter.drawGraphs(frame)
+                frame = visualizer.overlay_masks(frame, objects, output_transform)
                 metrics.update(start_time, frame)
 
-                next_frame_id_to_show += 1
-                if counter <= FRAMES_NUM:
-                    latency, fps = metrics.get_total()
-                    if latency and fps and next_frame_id_to_show >= 10:
-                        total_latency += latency
-                        total_fps += fps
-                        counter += 1
-                else:
-                    mean_latency.append(total_latency * 1e3 / FRAMES_NUM)
-                    mean_fps.append(total_fps / FRAMES_NUM)
-                    break
-
-                if video_writer.isOpened() and (args.output_limit <= 0 or next_frame_id_to_show <= args.output_limit):
+                if video_writer.isOpened() and (args.output_limit <= 0 or next_frame_id_to_show <= args.output_limit-1):
                     video_writer.write(frame)
 
                 if not args.no_show:
                     cv2.imshow('Segmentation Results', frame)
                     key = cv2.waitKey(1)
-                    if key == 27 or key == 'q' or key == 'Q':
+
+                    ESC_KEY = 27
+                    # Quit.
+                    if key in {ord('q'), ord('Q'), ESC_KEY}:
                         break
                     presenter.handleKey(key)
-
-        pipeline.await_all()
-        # Process completed requests
-        for next_frame_id_to_show in range(next_frame_id_to_show, next_frame_id):
-            results = pipeline.get_result(next_frame_id_to_show)
-            while results is None:
-                results = pipeline.get_result(next_frame_id_to_show)
-            objects, frame_meta = results
-            frame = frame_meta['frame']
-            start_time = frame_meta['start_time']
-
-            frame = visualizer.overlay_masks(frame, objects, output_transform)
-            presenter.drawGraphs(frame)
-            metrics.update(start_time, frame)
-
-            if video_writer.isOpened() and (args.output_limit <= 0 or next_frame_id_to_show <= args.output_limit-1):
-                video_writer.write(frame)
-
-            if not args.no_show:
-                cv2.imshow('Segmentation Results', frame)
-                key = cv2.waitKey(1)
+                next_frame_id_to_show += 1
+            else:
+                break
 
     latency = np.array(mean_latency)
     mean_latency, std_latency = latency.mean().round(2), latency.std().round(2)
