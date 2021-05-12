@@ -1,6 +1,5 @@
 import logging
 from collections import deque
-from models.utils import preprocess_output
 
 
 class NewAsyncPipeline1:

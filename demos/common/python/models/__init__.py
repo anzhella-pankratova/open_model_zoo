@@ -1,12 +1,9 @@
 """
  Copyright (C) 2021 Intel Corporation
-
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
  You may obtain a copy of the License at
-
       http://www.apache.org/licenses/LICENSE-2.0
-
  Unless required by applicable law or agreed to in writing, software
  distributed under the License is distributed on an "AS IS" BASIS,
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -24,13 +21,8 @@ from .open_pose import OpenPose
 from .retinaface import RetinaFace
 from .segmentation import SegmentationModel, SalientObjectDetectionModel
 from .ssd import SSD
-<<<<<<< HEAD
 from .ultra_lightweight_face_detection import UltraLightweightFaceDetection
 from .utils import DetectionWithLandmarks, InputTransform, OutputTransform
-=======
-from .text_recognition import TextRecognition
-from .utils import DetectionWithLandmarks
->>>>>>> 8d598b424 (Add text_detection_demo and two_stage_pipeline)
 from .yolo import YOLO, YoloV4
 
 __all__ = [
@@ -47,11 +39,7 @@ __all__ = [
     'SalientObjectDetectionModel',
     'SegmentationModel',
     'SSD',
-<<<<<<< HEAD
     'UltraLightweightFaceDetection',
-=======
-    'TextRecognition',
->>>>>>> 8d598b424 (Add text_detection_demo and two_stage_pipeline)
     'YOLO',
     'YoloV4',
 ]

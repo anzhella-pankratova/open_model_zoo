@@ -242,7 +242,7 @@ def main():
     total_latency = 0
     total_fps = 0
     counter = 0
-    FRAMES_NUM = 50
+    FRAMES_NUM = 100
 
     log.info('Starting inference...')
     print("To close the application, press 'CTRL+C' here or switch to the output window and press ESC key")
@@ -270,16 +270,6 @@ def main():
             frame = draw_detections(frame, objects, palette, model.labels, args.prob_threshold, output_transform)
             metrics.update(start_time, frame)
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-            if video_writer.isOpened() and (args.output_limit <= 0 or next_frame_id_to_show <= args.output_limit-1):
-                video_writer.write(frame)
-            next_frame_id_to_show += 1
-
-=======
-            next_frame_id_to_show += 1
-=======
->>>>>>> 540d5cbdd (Update)
             if counter <= FRAMES_NUM:
                 latency, fps = metrics.get_total()
                 if latency and fps and next_frame_id_to_show >= 10:
@@ -288,9 +278,12 @@ def main():
                     counter += 1
             else:
                 break
+
+            if video_writer.isOpened() and (args.output_limit <= 0 or next_frame_id_to_show <= args.output_limit-1):
+                video_writer.write(frame)
+
             next_frame_id_to_show += 1
-            
->>>>>>> 4611a84af (Add AsyncPipeline with waits to compare)
+
             if not args.no_show:
                 cv2.imshow('Detection Results', frame)
                 key = cv2.waitKey(1)
