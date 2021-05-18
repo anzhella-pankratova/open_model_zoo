@@ -30,15 +30,11 @@ class NewAsyncPipeline:
         return None
 
     def await_any(self):
-        if self.processed_detector_req_id:
-            self.exec_net_detector.wait(num_requests=min(len(self.empty_detector_req_id) + 1, self.num_requests), timeout=1)
+        self.exec_net_detector.wait(num_requests=1, timeout=1)
 
     def check_detector_status(self):
         req_id = self.exec_net_detector.get_idle_request_id()
-        if req_id == -1:
-            self.await_any()
-            req_id = self.exec_net_detector.get_idle_request_id()
-        if req_id in self.processed_detector_req_id:
+        if req_id != -1 and req_id in self.processed_detector_req_id:
             result, id = self.get_detector_result(req_id)
             self.detector_result[id] = result
             self.processed_detector_req_id.remove(req_id)

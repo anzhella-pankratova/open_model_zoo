@@ -235,7 +235,7 @@ def main():
     detector_pipeline = AsyncPipeline(ie, model, plugin_config,
                                       device=args.device, max_num_requests=args.num_infer_requests)
 
-    FRAMES_NUM = 50
+    FRAMES_NUM = 300
     TIMES_TO_REPEAT = 5
     mean_latency = []
     mean_fps = []
@@ -359,10 +359,10 @@ def main():
 
     latency = np.array(mean_latency)
     mean_latency, std_latency = latency.mean().round(2), latency.std().round(2)
-    latency_range = str(mean_latency - std_latency) + '-' + str(mean_latency + std_latency)
+    latency_range = str(mean_latency) + '+-' + str(std_latency)
     fps = np.array(mean_fps)
-    mean_fps, std_fps = fps.mean().round(2), fps.std().round(2)
-    fps_range = str(mean_fps - std_fps) + '-' + str(mean_fps + std_fps)
+    mean_fps, std_fps = np.around(fps.mean(), 2), np.around(fps.std(), 2)
+    fps_range = str(mean_fps) + '+-' + str(std_fps)
     print('Mean metrics and std for {} frames, {} launch times'.format(FRAMES_NUM, TIMES_TO_REPEAT))
     print("Latency: {} ms".format(latency_range))
     print("FPS: {}".format(fps_range))
