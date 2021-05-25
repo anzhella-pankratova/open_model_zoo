@@ -229,10 +229,6 @@ def main():
 
     log.info('Loading network...')
 
-    model = get_model(ie, args)
-
-    pipeline = NewAsyncPipeline(ie, model, plugin_config, args.device, args.num_infer_requests)
-
     FRAMES_NUM = 300
     TIMES_TO_REPEAT = 5
     mean_latency = []
@@ -241,19 +237,20 @@ def main():
     log.info('Starting inference...')
     print("To close the application, press 'CTRL+C' here or switch to the output window and press ESC key")
 
-    palette = ColorPalette(len(model.labels) if model.labels else 100)
-    metrics = PerformanceMetrics()
-    presenter = None
-    output_transform = None
-    video_writer = cv2.VideoWriter()
-
     for i in range(TIMES_TO_REPEAT):
         cap = open_images_capture(args.input, args.loop)
+        model = get_model(ie, args)
+        pipeline = NewAsyncPipeline(ie, model, plugin_config, args.device, args.num_infer_requests)
+        palette = ColorPalette(len(model.labels) if model.labels else 100)
+        presenter = None
+        output_transform = None
+        video_writer = cv2.VideoWriter()
         next_frame_id = 0
         next_frame_id_to_show = 0
         total_latency = 0
         total_fps = 0
         counter = 0
+        metrics = PerformanceMetrics()
         while True:
             # Process all completed requests
             results = pipeline.get_result(next_frame_id_to_show)

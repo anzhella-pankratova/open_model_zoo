@@ -158,7 +158,6 @@ def get_model(ie, args):
 
 
 def main():
-    metrics = PerformanceMetrics()
     args = build_argparser().parse_args()
 
     log.info('Initializing Inference Engine...')
@@ -168,10 +167,6 @@ def main():
 
     log.info('Loading network...')
 
-    model, visualizer = get_model(ie, args)
-
-    pipeline = AsyncPipeline(ie, model, plugin_config, device=args.device, max_num_requests=args.num_infer_requests)
-
     FRAMES_NUM = 300
     TIMES_TO_REPEAT = 5
     mean_latency = []
@@ -180,17 +175,19 @@ def main():
     log.info('Starting inference...')
     print("To close the application, press 'CTRL+C' here or switch to the output window and press ESC key")
 
-    presenter = None
-    output_transform = None
-    video_writer = cv2.VideoWriter()
-
     for i in range(TIMES_TO_REPEAT):
+        model, visualizer = get_model(ie, args)
+        pipeline = AsyncPipeline(ie, model, plugin_config, device=args.device, max_num_requests=args.num_infer_requests)
+        presenter = None
+        output_transform = None
+        video_writer = cv2.VideoWriter()
         cap = open_images_capture(args.input, args.loop)
         next_frame_id = 0
         next_frame_id_to_show = 0
         total_latency = 0
         total_fps = 0
         counter = 0
+        metrics = PerformanceMetrics()
         while True:
             if pipeline.is_ready():
                 # Get new image/frame
