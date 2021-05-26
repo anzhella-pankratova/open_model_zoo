@@ -7,7 +7,7 @@ class NewAsyncPipeline:
         self.logger = logging.getLogger()
         self.detector = detector
 
-        self.logger.info('Loading Text Detection network to {} plugin...'.format(device))
+        #self.logger.info('Loading Text Detection network to {} plugin...'.format(device))
         self.exec_net_detector = ie.load_network(network=self.detector.net, device_name=device,
                                                  config=plugin_config, num_requests=max_num_requests)
         self.num_requests = len(self.exec_net_detector.requests)

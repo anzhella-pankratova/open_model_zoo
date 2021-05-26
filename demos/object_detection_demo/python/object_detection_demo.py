@@ -16,7 +16,7 @@
 """
 
 import colorsys
-import logging
+#import logging
 import random
 import sys
 from argparse import ArgumentParser, SUPPRESS
@@ -37,8 +37,8 @@ from images_capture import open_images_capture
 from performance_metrics import PerformanceMetrics
 from helpers import resolution
 
-logging.basicConfig(format='[ %(levelname)s ] %(message)s', level=logging.INFO, stream=sys.stdout)
-log = logging.getLogger()
+#logging.basicConfig(format='[ %(levelname)s ] %(message)s', level=logging.INFO, stream=sys.stdout)
+#log = logging.getLogger()
 
 
 def build_argparser():
@@ -223,27 +223,27 @@ def print_raw_results(size, detections, labels, threshold):
 def main():
     args = build_argparser().parse_args()
 
-    log.info('Initializing Inference Engine...')
+    #log.info('Initializing Inference Engine...')
     ie = IECore()
 
     plugin_config = get_user_config(args.device, args.num_streams, args.num_threads)
 
-    log.info('Loading network...')
+    #log.info('Loading network...')
 
     FRAMES_NUM = 300
     TIMES_TO_REPEAT = 5
     mean_latency = []
     mean_fps = []
+    model = get_model(ie, args)
+    palette = ColorPalette(len(model.labels) if model.labels else 100)
 
-    log.info('Starting inference...')
-    print("To close the application, press 'CTRL+C' here or switch to the output window and press ESC key")
+    #log.info('Starting inference...')
+    #print("To close the application, press 'CTRL+C' here or switch to the output window and press ESC key")
 
 
     for i in range(TIMES_TO_REPEAT):
-        model = get_model(ie, args)
         detector_pipeline = AsyncPipeline(ie, model, plugin_config,
                                         device=args.device, max_num_requests=args.num_infer_requests)
-        palette = ColorPalette(len(model.labels) if model.labels else 100)
         presenter = None
         output_transform = None
         video_writer = cv2.VideoWriter()

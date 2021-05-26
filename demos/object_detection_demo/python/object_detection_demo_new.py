@@ -16,7 +16,7 @@
 """
 
 import colorsys
-import logging
+#import logging
 import random
 import sys
 from argparse import ArgumentParser, SUPPRESS
@@ -36,8 +36,8 @@ from pipelines import get_user_config, NewAsyncPipeline
 from images_capture import open_images_capture
 from performance_metrics import PerformanceMetrics
 from helpers import resolution
-logging.basicConfig(format='[ %(levelname)s ] %(message)s', level=logging.INFO, stream=sys.stdout)
-log = logging.getLogger()
+#logging.basicConfig(format='[ %(levelname)s ] %(message)s', level=logging.INFO, stream=sys.stdout)
+#log = logging.getLogger()
 
 
 def build_argparser():
@@ -206,7 +206,7 @@ def draw_detections(frame, detections, palette, labels, threshold, output_transf
 
 
 def print_raw_results(size, detections, labels, threshold):
-    log.info(' Class ID | Confidence | XMIN | YMIN | XMAX | YMAX ')
+    #log.info(' Class ID | Confidence | XMIN | YMIN | XMAX | YMAX ')
     for detection in detections:
         if detection.score > threshold:
             xmin = max(int(detection.xmin), 0)
@@ -215,33 +215,33 @@ def print_raw_results(size, detections, labels, threshold):
             ymax = min(int(detection.ymax), size[0])
             class_id = int(detection.id)
             det_label = labels[class_id] if labels and len(labels) >= class_id else '#{}'.format(class_id)
-            log.info('{:^9} | {:10f} | {:4} | {:4} | {:4} | {:4} '
-                     .format(det_label, detection.score, xmin, ymin, xmax, ymax))
+            #log.info('{:^9} | {:10f} | {:4} | {:4} | {:4} | {:4} '
+            #         .format(det_label, detection.score, xmin, ymin, xmax, ymax))
 
 
 def main():
     args = build_argparser().parse_args()
 
-    log.info('Initializing Inference Engine...')
+    #log.info('Initializing Inference Engine...')
     ie = IECore()
 
     plugin_config = get_user_config(args.device, args.num_streams, args.num_threads)
 
-    log.info('Loading network...')
+    #log.info('Loading network...')
+    model = get_model(ie, args)
+    palette = ColorPalette(len(model.labels) if model.labels else 100)
 
     FRAMES_NUM = 300
     TIMES_TO_REPEAT = 5
     mean_latency = []
     mean_fps = []
 
-    log.info('Starting inference...')
-    print("To close the application, press 'CTRL+C' here or switch to the output window and press ESC key")
+    #log.info('Starting inference...')
+    #print("To close the application, press 'CTRL+C' here or switch to the output window and press ESC key")
 
     for i in range(TIMES_TO_REPEAT):
         cap = open_images_capture(args.input, args.loop)
-        model = get_model(ie, args)
         pipeline = NewAsyncPipeline(ie, model, plugin_config, args.device, args.num_infer_requests)
-        palette = ColorPalette(len(model.labels) if model.labels else 100)
         presenter = None
         output_transform = None
         video_writer = cv2.VideoWriter()
