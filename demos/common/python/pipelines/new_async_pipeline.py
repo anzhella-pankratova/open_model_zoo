@@ -35,20 +35,20 @@ class NewAsyncPipeline:
     def check_request_status(self):
         req_id = self.exec_net.get_idle_request_id()
         if req_id != -1 and req_id in self.busy_requests_id:
-            result, id = self.get_detector_result(req_id)
+            result, id = self.get_request_output(req_id)
             self.results[id] = result
             self.busy_requests_id.remove(req_id)
             self.empty_requests_id.append(req_id)
 
-    def get_detector_result(self, request_id):
-        request = self.exec_net.requests[request_id]
-        frame_id, preprocess_meta, meta = self.get_model_meta(request_id)
+    def get_request_output(self, req_id):
+        request = self.exec_net.requests[req_id]
+        frame_id, preprocess_meta, meta = self.get_model_meta(req_id)
         raw_result = {key: blob.buffer for key, blob in request.output_blobs.items()}
         return (self.model.postprocess(raw_result, preprocess_meta), meta), frame_id
 
-    def get_model_meta(self, request_id):
-        meta = self.model_meta[request_id]
-        self.model_meta[request_id] = None
+    def get_model_meta(self, req_id):
+        meta = self.model_meta[req_id]
+        self.model_meta[req_id] = None
         return meta
 
     def submit_data(self, inputs, id, meta):
