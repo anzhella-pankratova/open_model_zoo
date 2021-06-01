@@ -97,24 +97,28 @@ class AsyncPipeline:
         self.empty_requests = deque(self.exec_net.requests)
         self.completed_request_results = {}
         self.callback_exceptions = {}
-        self.event = threading.Event()
+        self.cv = threading.Condition()
 
     def inference_completion_callback(self, status, callback_args):
         try:
             request, id, meta, preprocessing_meta = callback_args
             if status != 0:
                 raise RuntimeError('Infer Request has returned status code {}'.format(status))
+            self.cv.acquire()
             raw_outputs = {key: blob.buffer for key, blob in request.output_blobs.items()}
             self.completed_request_results[id] = (raw_outputs, meta, preprocessing_meta)
             self.empty_requests.append(request)
+            self.cv.notify()
+            self.cv.release()
         except Exception as e:
             self.callback_exceptions.append(e)
-        self.event.set()
 
     def submit_data(self, inputs, id, meta):
-        request = self.empty_requests.popleft()
+        self.cv.acquire()
         if len(self.empty_requests) == 0:
-            self.event.clear()
+            self.cv.wait()
+        request = self.empty_requests.popleft()
+        self.cv.release()
         inputs, preprocessing_meta = self.model.preprocess(inputs)
         request.set_completion_callback(py_callback=self.inference_completion_callback,
                                         py_data=(request, id, meta, preprocessing_meta))
@@ -143,5 +147,6 @@ class AsyncPipeline:
             request.wait()
 
     def await_any(self):
-        if len(self.empty_requests) == 0:
-            self.event.wait()
+        self.cv.acquire()
+        self.cv.wait()
+        self.cv.release()
