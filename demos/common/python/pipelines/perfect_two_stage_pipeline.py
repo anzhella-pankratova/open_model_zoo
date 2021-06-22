@@ -164,29 +164,32 @@ class PerfectTwoStagePipeline:
             return cell.get_output()
 
     def update_decoder_busy_to_ready(self):
-        req_id = self.check_busy_requests(self.exec_net_decoder, self.decoder_busy_req_id)
-        if req_id is None: return
+        while True:
+            req_id = self.check_busy_requests(self.exec_net_decoder, self.decoder_busy_req_id)
+            if req_id is None: return
 
-        cell = self.decoder_requests_map[req_id]
-        cell.status = 'READY'
-        cell.output = self.postprocess_result(self.decoder, self.exec_net_decoder,
-                                              req_id, cell.preprocessing_meta)
-        self.decoder_busy_req_id.remove(req_id)
-        self.decoder_idle_req_id.append(req_id)
+            cell = self.decoder_requests_map[req_id]
+            cell.status = 'READY'
+            cell.output = self.postprocess_result(self.decoder, self.exec_net_decoder,
+                                                    req_id, cell.preprocessing_meta)
+            self.decoder_busy_req_id.remove(req_id)
+            self.decoder_idle_req_id.append(req_id)
 
     def update_decoder_idle_to_busy(self):
         if not self.decoder_idle_req_id: return
-        req_id = self.decoder_idle_req_id.popleft()
 
-        for enc_cell in self.encoder_cells:
-            dec_cell = enc_cell.get_idle_decoder_cell()
-            if dec_cell is not None:
-                dec_cell.status = 'BUSY'
-                self.decoder_requests_map[req_id] = dec_cell
+        while self.decoder_idle_req_id:
+            req_id = self.decoder_idle_req_id.popleft()
+            self.decoder_busy_req_id.append(req_id)
 
-                self.decoder_busy_req_id.append(req_id)
-                self.exec_net_decoder.requests[req_id].async_infer(inputs=dec_cell.box)
-                return
+            for enc_cell in self.encoder_cells:
+                dec_cell = enc_cell.get_idle_decoder_cell()
+                if dec_cell is not None:
+                    dec_cell.status = 'BUSY'
+                    self.decoder_requests_map[req_id] = dec_cell
+
+                    self.exec_net_decoder.requests[req_id].async_infer(inputs=dec_cell.box)
+                    break
 
     def finish(self):
         for enc_cell in self.encoder_cells:
