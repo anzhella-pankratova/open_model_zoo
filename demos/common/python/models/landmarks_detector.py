@@ -20,7 +20,7 @@ from .utils import preprocess_output, resize_image
 
 
 class LandmarksDetector(Model):
-    POINTS_NUMBER = 5
+    #POINTS_NUMBER = 5
 
     def __init__(self, ie, model_path):
         super().__init__(ie, model_path)
@@ -32,8 +32,8 @@ class LandmarksDetector(Model):
         self.input_shape = self.net.input_info[self.input_blob].input_data.shape
         output_shape = self.net.outputs[self.output_blob].shape
 
-        assert np.array_equal([1, self.POINTS_NUMBER * 2, 1, 1], output_shape), \
-            'Expected model output shape {}, got {}'.format([1, self.POINTS_NUMBER * 2, 1, 1], output_shape)
+        #assert np.array_equal([1, self.POINTS_NUMBER * 2, 1, 1], output_shape), \
+        #   'Expected model output shape {}, got {}'.format([1, self.POINTS_NUMBER * 2, 1, 1], output_shape)
 
     def resize_input(self, image, target_shape):
         #print(image.shape)
