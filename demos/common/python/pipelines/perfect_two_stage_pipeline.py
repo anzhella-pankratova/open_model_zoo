@@ -190,6 +190,8 @@ class PerfectTwoStagePipeline:
 
                     self.exec_net_decoder.requests[req_id].async_infer(inputs=dec_cell.box)
                     break
+            if self.decoder_requests_map[req_id] is None:
+                self.decoder_busy_req_id.remove(req_id)
 
     def finish(self):
         for enc_cell in self.encoder_cells:
