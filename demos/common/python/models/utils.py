@@ -155,3 +155,14 @@ def nms(x1, y1, x2, y2, scores, thresh, include_boundaries=False, keep_top_k=Non
         order = order[np.where(overlap <= thresh)[0] + 1]
 
     return keep
+
+def preprocess_output(detections, frame):
+    boxes = []
+    for detection in detections:
+        if detection.score > 0.8:
+            xmin = max(int(detection.xmin), 0)
+            ymin = max(int(detection.ymin), 0)
+            xmax = min(int(detection.xmax), frame.shape[1])
+            ymax = min(int(detection.ymax), frame.shape[0])
+            boxes.append(frame[ymin:ymax, xmin:xmax])
+    return boxes

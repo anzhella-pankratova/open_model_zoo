@@ -23,6 +23,7 @@ from .faceboxes import FaceBoxes
 from .hpe_associative_embedding import HpeAssociativeEmbedding
 from .open_pose import OpenPose
 from .retinaface import RetinaFace, RetinaFacePyTorch
+from .landmarks_detector import LandmarksDetector
 from .segmentation import SegmentationModel, SalientObjectDetectionModel
 from .ssd import SSD
 from .ultra_lightweight_face_detection import UltraLightweightFaceDetection
@@ -41,6 +42,7 @@ __all__ = [
     'OpenPose',
     'OutputTransform',
     'RetinaFace',
+    'LandmarksDetector',
     'RetinaFacePyTorch',
     'SalientObjectDetectionModel',
     'SegmentationModel',
