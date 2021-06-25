@@ -27,7 +27,7 @@ sys.path.append(str(Path(__file__).resolve().parents[2] / 'common/python'))
 import models
 import monitors
 from images_capture import open_images_capture
-from performance_metrics import PerformanceMetrics
+from performance_metrics import PerformanceMetrics, PerformanceValues
 
 from pipelines import TwoStagePipeline, PerfectTwoStagePipeline
 
@@ -186,6 +186,7 @@ def main():
     next_frame_id_to_show = 0
 
     metrics = PerformanceMetrics()
+    perf_values = PerformanceValues(10)
     video_writer = cv2.VideoWriter()
     presenter = monitors.Presenter(args.utilization_monitors, 55,
                                    (round(frame_size[1] / 4), round(frame_size[0] / 8)))
@@ -202,6 +203,7 @@ def main():
 
             presenter.drawGraphs(frame)
             frame = draw_detections(frame, detections, landmarks)
+            perf_values.update(start_time)
             metrics.update(start_time, frame)
 
             if counter <= FRAMES_NUM:
@@ -244,6 +246,8 @@ def main():
     #print(presenter.reportMeans())
     print("Latency: {} ms".format(np.round(total_latency, 3)))
     print("FPS: {}".format(np.round(total_fps, 3)))
+    latency, fps = perf_values.get_total()
+    print(latency, fps)
 
 
 if __name__ == '__main__':
