@@ -30,13 +30,12 @@ class PerformanceValues:
     def update(self, start_time):
         current_time = perf_counter()
         self.total_frames += 1
-        if self.total_frames >= self.frames_to_skip:
+        if self.total_frames > self.frames_to_skip:
             latency = current_time - start_time
             self.total_latency += latency
             self.last_current_time = current_time
-        if self.total_frames == self.frames_to_skip - 1:
+        if self.total_frames == self.frames_to_skip + 1:
             self.first_current_time = current_time
-            self.last_current_time = current_time
 
     def get_total(self):
         self.total_frames -= self.frames_to_skip
