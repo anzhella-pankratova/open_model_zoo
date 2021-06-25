@@ -22,29 +22,27 @@ from helpers import put_highlighted_text
 class PerformanceValues:
     def __init__(self, frames_to_skip=10):
         self.total_latency = 0
-        self.total_fps = 0
+        self.first_current_time = None
         self.last_current_time = None
         self.frames_to_skip = frames_to_skip
         self.total_frames = 0
 
     def update(self, start_time):
         current_time = perf_counter()
-
-        if self.last_current_time is not None:
-            self.total_frames += 1
-            if self.total_frames >= self.frames_to_skip: 
-                fps = current_time - self.last_current_time
-                self.total_fps += fps
-
-                latency = current_time - start_time
-                self.total_latency += latency
-        self.last_current_time = current_time
+        self.total_frames += 1
+        if self.total_frames >= self.frames_to_skip:
+            latency = current_time - start_time
+            self.total_latency += latency
+            self.last_current_time = current_time
+        if self.total_frames == self.frames_to_skip - 1:
+            self.first_current_time = current_time
+            self.last_current_time = current_time
 
     def get_total(self):
         self.total_frames -= self.frames_to_skip
         self.total_latency = self.total_latency / self.total_frames * 1e3
-        self.total_fps = self.total_frames / self.total_fps
-        return self.total_latency, self.total_fps
+        total_fps = self.total_frames / (self.last_current_time - self.first_current_time)
+        return self.total_latency, total_fps
 
 
 class Statistic:
