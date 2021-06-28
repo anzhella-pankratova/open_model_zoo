@@ -27,9 +27,9 @@ sys.path.append(str(Path(__file__).resolve().parents[2] / 'common/python'))
 import models
 import monitors
 from images_capture import open_images_capture
-from performance_metrics import PerformanceMetrics
+from performance_metrics import PerformanceValues
 
-from pipelines import TwoStagePipeline, SyncTwoStagePipeline
+from pipelines import SyncTwoStagePipeline
 
 logging.basicConfig(format='[ %(levelname)s ] %(message)s', level=logging.INFO, stream=sys.stdout)
 log = logging.getLogger()
@@ -170,14 +170,12 @@ def main():
                                     args.device_fd, args.device_ld)
 
     FRAMES_NUM = 300
-    total_latency = 0
-    total_fps = 0
     counter = 0
 
     log.info('Starting inference...')
     print("To close the application, press 'CTRL+C' here or switch to the output window and press ESC key")
 
-    metrics = PerformanceMetrics()
+    perf_values = PerformanceValues(10)
     video_writer = cv2.VideoWriter()
     presenter = monitors.Presenter(args.utilization_monitors, 55,
                                    (round(frame_size[1] / 4), round(frame_size[0] / 8)))
@@ -194,22 +192,15 @@ def main():
             break
         # Infer
         detections, landmarks = pipeline.infer(frame)
-
-        if counter <= FRAMES_NUM:
-            latency, fps = metrics.get_total()
-            if latency and fps and next_frame_id_to_show >= 10:
-                total_latency += latency
-                total_fps += fps
-                counter += 1
-        else:
-            total_latency = total_latency * 1e3 / FRAMES_NUM
-            total_fps = total_fps / FRAMES_NUM
-            break
-
         next_frame_id_to_show += 1
         presenter.drawGraphs(frame)
         frame = draw_detections(frame, detections, landmarks)
-        metrics.update(start_time, frame)
+        perf_values.update(start_time)
+
+        if counter <= FRAMES_NUM:
+            counter += 1
+        else:
+            break
 
         if not args.no_show:
             cv2.imshow('Text Detection Results', frame)
@@ -218,10 +209,9 @@ def main():
                 break
             presenter.handleKey(key)
 
-    #metrics.print_total()
-    #print(presenter.reportMeans())
-    print("Latency: {} ms".format(np.round(total_latency, 3)))
-    print("FPS: {}".format(np.round(total_fps, 3)))
+    latency, fps = perf_values.get_total()
+    print("Latency: {} ms".format(np.round(latency, 3)))
+    print("FPS: {}".format(np.round(fps, 3)))
 
 
 if __name__ == '__main__':

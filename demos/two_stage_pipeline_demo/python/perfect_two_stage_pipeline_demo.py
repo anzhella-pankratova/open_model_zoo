@@ -27,9 +27,9 @@ sys.path.append(str(Path(__file__).resolve().parents[2] / 'common/python'))
 import models
 import monitors
 from images_capture import open_images_capture
-from performance_metrics import PerformanceMetrics, PerformanceValues
+from performance_metrics import PerformanceValues
 
-from pipelines import TwoStagePipeline, PerfectTwoStagePipeline
+from pipelines import PerfectTwoStagePipeline
 
 logging.basicConfig(format='[ %(levelname)s ] %(message)s', level=logging.INFO, stream=sys.stdout)
 log = logging.getLogger()
@@ -172,8 +172,6 @@ def main():
                                 args.num_requests_fd, args.num_requests_ld)
 
     FRAMES_NUM = 300
-    total_latency = 0
-    total_fps = 0
     counter = 0
 
     log.info('Starting inference...')
@@ -185,7 +183,6 @@ def main():
     next_frame_id = 1
     next_frame_id_to_show = 0
 
-    metrics = PerformanceMetrics()
     perf_values = PerformanceValues(10)
     video_writer = cv2.VideoWriter()
     presenter = monitors.Presenter(args.utilization_monitors, 55,
@@ -204,17 +201,10 @@ def main():
             presenter.drawGraphs(frame)
             frame = draw_detections(frame, detections, landmarks)
             perf_values.update(start_time)
-            metrics.update(start_time, frame)
 
             if counter <= FRAMES_NUM:
-                latency, fps = metrics.get_total()
-                if latency and fps and next_frame_id_to_show >= 10:
-                    total_latency += latency
-                    total_fps += fps
-                    counter += 1
+                counter += 1
             else:
-                total_latency = total_latency * 1e3 / FRAMES_NUM
-                total_fps = total_fps / FRAMES_NUM
                 break
 
             next_frame_id_to_show += 1
@@ -242,12 +232,9 @@ def main():
         #else:
         #   pipeline.await_any()
 
-    #metrics.print_total()
-    #print(presenter.reportMeans())
-    print("Latency: {} ms".format(np.round(total_latency, 3)))
-    print("FPS: {}".format(np.round(total_fps, 3)))
     latency, fps = perf_values.get_total()
-    print(latency, fps)
+    print("Latency: {} ms".format(np.round(latency, 3)))
+    print("FPS: {}".format(np.round(fps, 3)))
 
 
 if __name__ == '__main__':
