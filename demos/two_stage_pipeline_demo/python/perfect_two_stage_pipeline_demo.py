@@ -73,8 +73,6 @@ def build_argparser():
     infer_args.add_argument('-nthreads_fd', '--num_threads_fd', default=None, type=int,
                             help='Optional. Number of threads to use for inference on CPU (including HETERO cases) '
                                  'for Detection stage.')
-    infer_args.add_argument('-nireq_ld', '--num_requests_ld', default=1, type=int,
-                            help='Optional. Number of infer requests for Recognition stage.')
     infer_args.add_argument('-nstreams_ld', '--num_streams_ld',
                             help='Optional. Number of streams to use for inference on the CPU or/and GPU in throughput '
                                  'mode (for HETERO and MULTI device cases use format '
@@ -166,10 +164,11 @@ def main():
     detector = models.SSD(ie, args.m_fd, input_transform, labels=args.labels, keep_aspect_ratio_resize=args.keep_aspect_ratio)
     landmarker = models.LandmarksDetector(ie, args.m_ld)
 
+    encoder_requests = 0 if not args.num_streams_ld else int(args.num_streams_ld) * 2
     pipeline = PerfectTwoStagePipeline(ie, detector, landmarker,
-                                plugin_config_fd, plugin_config_ld,
-                                args.device_fd, args.device_ld,
-                                args.num_requests_fd, args.num_requests_ld)
+                                       plugin_config_fd, plugin_config_ld,
+                                       args.device_fd, args.device_ld,
+                                       args.num_requests_fd, encoder_requests)
 
     FRAMES_NUM = 300
     counter = 0
@@ -177,8 +176,7 @@ def main():
     log.info('Starting inference...')
     print("To close the application, press 'CTRL+C' here or switch to the output window and press ESC key")
 
-    cell_id = pipeline.is_ready()
-    pipeline.submit_data(frame, cell_id, 0, {'frame': frame, 'start_time': start_time})
+    pipeline.submit_data(frame, {'frame': frame, 'start_time': start_time})
 
     next_frame_id = 1
     next_frame_id_to_show = 0
@@ -219,15 +217,14 @@ def main():
                 presenter.handleKey(key)
             continue
 
-        cell_id = pipeline.is_ready()
-        if cell_id is not None:
+        if pipeline.is_ready():
             # Get new frame
             start_time = perf_counter()
             frame = cap.read()
             if frame is None:
                 break
             # Submit to face detection model
-            pipeline.submit_data(frame, cell_id, next_frame_id, {'frame': frame, 'start_time': start_time})
+            pipeline.submit_data(frame, {'frame': frame, 'start_time': start_time})
             next_frame_id += 1
         #else:
         #   pipeline.await_any()
