@@ -11,26 +11,28 @@
  limitations under the License.
 """
 
-import logging
 from collections import deque
 from models.utils import preprocess_output
-import numpy as np
 
 
 class TwoStagePipeline:
     def __init__(self, ie, detector, recognizer, td_plugin_config, tr_plugin_config,
                  td_device, tr_device, td_num_requests, tr_num_requests):
-        self.logger = logging.getLogger()
         self.detector = detector
         self.recognizer = recognizer
 
-        self.logger.info('Loading Text Detection network to {} plugin...'.format(td_device))
         self.exec_net_detector = ie.load_network(network=self.detector.net, device_name=td_device,
                                                  config=td_plugin_config, num_requests=td_num_requests)
-        self.logger.info('Loading Text Recognition network to {} plugin...'.format(tr_device))
+        if td_num_requests == 0:
+            self.exec_net_detector = ie.load_network(network=self.detector.net, device_name=td_device,
+                                                     config=td_plugin_config,
+                                                     num_requests=len(self.exec_net_detector.requests) + 1)
         self.exec_net_recognizer = ie.load_network(network=self.recognizer.net, device_name=tr_device,
                                                    config=tr_plugin_config, num_requests=tr_num_requests)
-
+        if tr_num_requests == 0:
+            self.exec_net_recognizer = ie.load_network(network=self.recognizer.net, device_name=tr_device,
+                                                       config=tr_plugin_config,
+                                                       num_requests=len(self.exec_net_recognizer.requests) + 1)
         detector_req_id = [id for id in range(td_num_requests)]
         recognizer_req_id = [id for id in range(tr_num_requests)]
 

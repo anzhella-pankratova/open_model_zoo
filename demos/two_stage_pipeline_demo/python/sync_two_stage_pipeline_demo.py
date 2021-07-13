@@ -99,32 +99,6 @@ def build_argparser():
     return parser
 
 
-def get_plugin_configs(device, num_streams, num_threads):
-    config_user_specified = {}
-
-    devices_nstreams = {}
-    if num_streams:
-        devices_nstreams = {device: num_streams for device in ['CPU', 'GPU'] if device in device} \
-            if num_streams.isdigit() \
-            else dict(device.split(':', 1) for device in num_streams.split(','))
-
-    if 'CPU' in device:
-        if num_threads is not None:
-            config_user_specified['CPU_THREADS_NUM'] = str(num_threads)
-        if 'CPU' in devices_nstreams:
-            config_user_specified['CPU_THROUGHPUT_STREAMS'] = devices_nstreams['CPU'] \
-                if int(devices_nstreams['CPU']) > 0 \
-                else 'CPU_THROUGHPUT_AUTO'
-
-    if 'GPU' in device:
-        if 'GPU' in devices_nstreams:
-            config_user_specified['GPU_THROUGHPUT_STREAMS'] = devices_nstreams['GPU'] \
-                if int(devices_nstreams['GPU']) > 0 \
-                else 'GPU_THROUGHPUT_AUTO'
-
-    return config_user_specified
-
-
 def draw_detections(frame, detections, landmarks):
     color = (50, 205, 50)
     face_id = 0
@@ -150,9 +124,6 @@ def main():
 
     log.info('Initializing Inference Engine...')
     ie = IECore()
-
-    plugin_config_fd = get_plugin_configs(args.device_fd, args.num_streams_fd, args.num_threads_fd)
-    plugin_config_ld = get_plugin_configs(args.device_ld, args.num_streams_ld, args.num_threads_ld)
 
     cap = open_images_capture(args.input, args.loop)
 
@@ -203,7 +174,7 @@ def main():
             break
 
         if not args.no_show:
-            cv2.imshow('Text Detection Results', frame)
+            cv2.imshow('Sync Two Stage Pipeline Results', frame)
             key = cv2.waitKey(1)
             if key in {ord('q'), ord('Q'), 27}:
                 break
