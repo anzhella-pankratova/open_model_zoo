@@ -181,6 +181,13 @@ def main():
             presenter.handleKey(key)
 
     latency, fps = perf_values.get_total()
+
+    with open('sync_two_stage_pipeline_results.txt', 'a', encoding='utf8') as f:
+        print("\nInput: {}".format(args.input), file=f)
+        print("Face Detection model: {}\nLandmarks detection model: {}".format(args.m_fd, args.m_ld), file=f)
+        print("Latency: {} ms".format(np.round(latency, 3)), file=f)
+        print("FPS: {}".format(np.round(fps, 3)), file=f)
+
     print("Latency: {} ms".format(np.round(latency, 3)))
     print("FPS: {}".format(np.round(fps, 3)))
 

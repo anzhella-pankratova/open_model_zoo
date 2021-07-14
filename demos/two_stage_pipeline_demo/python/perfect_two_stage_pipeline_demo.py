@@ -203,9 +203,19 @@ def main():
         #else:
         #   pipeline.await_any()
 
+    latency, fps = perf_values.get_total()
+
+    with open('perfect_two_stage_pipeline_results.txt', 'a', encoding='utf8') as f:
+        print("\nInput: {}".format(args.input), file=f)
+        print("Face Detection model: {}\nLandmarks detection model: {}".format(args.m_fd, args.m_ld), file=f)
+        print("Parameters: nireq_fd {}, nstreams_fd {}, nireq_ld {}, nstreams_ld {}".format(
+            args.num_requests_fd, args.num_streams_fd, encoder_requests, args.num_streams_ld), file=f)
+        print("Mode: {}".format(pipeline.mode), file=f)
+        print("Latency: {} ms".format(np.round(latency, 3)), file=f)
+        print("FPS: {}".format(np.round(fps, 3)), file=f)
+
     print("Mode:", pipeline.mode)
     print("Request.wait calls:", pipeline.wait_calls)
-    latency, fps = perf_values.get_total()
     print("Latency: {} ms".format(np.round(latency, 3)))
     print("FPS: {}".format(np.round(fps, 3)))
 
