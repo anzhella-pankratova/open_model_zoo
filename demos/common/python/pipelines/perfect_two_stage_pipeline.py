@@ -16,9 +16,9 @@ from models.utils import preprocess_output
 
 
 class DecoderCell:
-    def __init__(self, box, preprocessing_meta, parent):
+    def __init__(self, value, preprocessing_meta, parent):
         self.parent = parent
-        self.box = box
+        self.value = value
         self.preprocessing_meta = preprocessing_meta
         self.output = None
 
@@ -33,15 +33,15 @@ class EncoderCell:
         self.is_ready = False
         self.output = None
 
-        self.total_boxes = 0
-        self.ready_boxes = 0
+        self.total_values = 0
+        self.ready_values = 0
         self.next_processed = 0
 
     def create_decoder_cells(self, decoder):
-        boxes = preprocess_output(self.output, self.frame_meta['frame'])
-        self.decoder_cells = [DecoderCell(*decoder.preprocess(box), parent=self) for box in boxes]
-        self.total_boxes = len(self.decoder_cells)
-        if self.total_boxes == 0:
+        values = preprocess_output(self.output, self.frame_meta['frame'])
+        self.decoder_cells = [DecoderCell(*decoder.preprocess(value), parent=self) for value in values]
+        self.total_values = len(self.decoder_cells)
+        if self.total_values == 0:
             self.is_ready = True
 
     def get_output(self):
@@ -51,12 +51,12 @@ class EncoderCell:
         if not self.decoder_cells:
             return
         next_id = self.next_processed
-        if next_id < self.total_boxes:
+        if next_id < self.total_values:
             self.next_processed += 1
             return self.decoder_cells[next_id]
 
     def check_is_ready(self):
-        if self.ready_boxes != 0 and self.ready_boxes == self.total_boxes:
+        if self.ready_values != 0 and self.ready_values == self.total_values:
             self.is_ready = True
 
 
@@ -84,6 +84,9 @@ class PerfectTwoStagePipeline:
         self.decoder_busy_requests = []
         self.decoder_idle_requests = deque(self.exec_decoder.requests)
 
+        self.wait_calls = 0
+        self.mode = 'MAX_FPS'
+
         self.encoder_requests_map = {request: None for request in self.exec_encoder.requests}
         self.decoder_requests_map = {request: None for request in self.exec_decoder.requests}
 
@@ -102,6 +105,9 @@ class PerfectTwoStagePipeline:
             cell.check_is_ready()
 
     def is_ready(self):
+        if self.mode == 'MAX_FPS':
+            return len(self.encoder_busy_requests) < len(self.exec_encoder.requests) # and len(self.encoder_cells) < 5
+        # MAX_LATENCY mode
         return len(self.encoder_cells) < len(self.exec_encoder.requests)
 
     def submit_data(self, inputs, frame_meta):
@@ -123,6 +129,7 @@ class PerfectTwoStagePipeline:
         if request in busy_requests:
             return request
         for request in busy_requests:
+            self.wait_calls += 1
             if request.wait(0) == 0:
                 return request
 
@@ -151,7 +158,7 @@ class PerfectTwoStagePipeline:
             cell.output = self.postprocess_result(self.decoder, request, cell.preprocessing_meta)
             self.decoder_busy_requests.remove(request)
 
-            cell.parent.ready_boxes += 1
+            cell.parent.ready_values += 1
             self.decoder_idle_requests.append(request)
 
     def decoder_update_idle_to_busy(self):
@@ -160,7 +167,7 @@ class PerfectTwoStagePipeline:
             if cell is None:
                 return
             request = self.decoder_idle_requests.popleft()
-            request.async_infer(cell.box)
+            request.async_infer(cell.value)
 
             self.decoder_busy_requests.append(request)
             self.decoder_requests_map[request] = cell

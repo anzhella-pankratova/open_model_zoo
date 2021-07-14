@@ -138,7 +138,7 @@ def main():
     detector = models.SSD(ie, args.m_fd, input_transform, labels=args.labels, keep_aspect_ratio_resize=args.keep_aspect_ratio)
     landmarker = models.LandmarksDetector(ie, args.m_ld)
 
-    encoder_requests = 0 if not args.num_streams_ld else int(args.num_streams_ld) * 2
+    encoder_requests = 2 if not args.num_streams_ld else int(args.num_streams_ld) * 2
     pipeline = PerfectTwoStagePipeline(ie, detector, landmarker,
                                        plugin_config_fd, plugin_config_ld,
                                        args.device_fd, args.device_ld,
@@ -203,6 +203,8 @@ def main():
         #else:
         #   pipeline.await_any()
 
+    print("Mode:", pipeline.mode)
+    print("Request.wait calls:", pipeline.wait_calls)
     latency, fps = perf_values.get_total()
     print("Latency: {} ms".format(np.round(latency, 3)))
     print("FPS: {}".format(np.round(fps, 3)))
